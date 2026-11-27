@@ -36,12 +36,24 @@ const MENU = [
     "Transfert d'argent",
     'Frais',
     'Historique',
-    'Langue',
-    'Aide',
-    'Credit telephone',
+    'Correction',
+    'Demande incomplete',
+    'Solde insuffisant',
 ];
 
+const MORE_MENU = [
+    'Langue',
+    'Autre canal',
+    'Terminologie financiere',
+    'Retour',
+];
+
+const MENU_TEXT = 'Safinum. Choisissez:\n1. Mon solde\n2. Transfert\n3. Frais\n4. Historique\n5. Correction\n6. Demande incomplete\n7. Solde insuffisant\n00. Voir plus';
+const MORE_MENU_TEXT = 'Suite:\n8. Langue\n9. Autre canal\n10. Terminologie financiere\n0. Retour';
+
 async function handleUssd(payload, traceId) {
+    console.log('[Safinum incoming USSD payload]', JSON.stringify(sanitizePayload(payload), null, 2));
+
     const sessionId = payload.session_id || 'sans-session';
     const phone = String(payload.phone || '');
     const state = sessions.get(sessionId) || { step: 'idle' };
@@ -49,14 +61,16 @@ async function handleUssd(payload, traceId) {
         || payload.language
         || state.language
         || getLanguagePreference(phone);
-    const raw = String((payload.input && payload.input.text) || '').trim();
+    const raw = readUssdInput(payload.input);
     const text = understand(raw, requestedLanguage);
     const input = parseInput(text, requestedLanguage);
     const bank = createBank(payload.bank_api && payload.bank_api.base_url, traceId);
 
     if (payload.language) setLanguagePreference(phone, payload.language);
     applyRequestedLanguage(state, requestedLanguage);
-    const selectedScenario = raw === '' && ['idle', 'menu'].includes(state.step)
+    const selectedScenario = raw === ''
+        && (!payload.input || payload.input.type !== 'menu')
+        && ['idle', 'menu'].includes(state.step)
         ? scenarioChoiceFromPayload(payload)
         : null;
     const body = selectedScenario
@@ -86,10 +100,17 @@ function applyRequestedLanguage(state, requestedLanguage) {
 async function route(state, text, input, phone, bank) {
     const { intent, amount, recipient, term, language } = input;
 
+    if (text === '00' && ['idle', 'menu'].includes(state.step)) {
+        state.step = 'menu';
+        state.menuPage = 2;
+
+        return menuReply(2);
+    }
+
     if (text === '' && state.step !== 'confirm') {
         state.step = 'menu';
 
-        return reply('Safinum. Choisissez:\n' + numbered(MENU), 'UNKNOWN', {}, { options: MENU });
+        return menuReply(state.menuPage || 1);
     }
 
     if (intent === 'LANGUAGE_SWITCH') {
@@ -167,29 +188,86 @@ async function route(state, text, input, phone, bank) {
         default:
             state.step = 'menu';
 
-            return reply('Safinum. Choisissez:\n' + numbered(MENU), 'UNKNOWN', {}, { options: MENU });
+            return menuReply(state.menuPage || 1);
     }
 }
 
+function readUssdInput(input = {}) {
+    const text = String(input.text || '').trim();
+    const value = text || String(input.ussd_text || '').trim();
+
+    if (!value) return '';
+    if (!/[*#]/.test(value)) return value;
+    if (value.endsWith('#')) return '';
+
+    const segments = value.split(/[*#]/).filter(Boolean);
+
+    return segments.length ? segments[segments.length - 1].trim() : value;
+}
+
+function sanitizePayload(value, key = '') {
+    if (/(phone|msisdn|account|beneficiar|recipient|trace.?id|team.?id|api.?key|secret|token|password)/i.test(key)) {
+        return '[redacted]';
+    }
+
+    if ((key === 'text' || key === 'ussd_text') && typeof value === 'string') {
+        if (/^[\d*#]*$/.test(value)) return value.replace(/\d{3,}/g, '[redacted]');
+
+        return `[redacted user input, ${[...value].length} chars]`;
+    }
+
+    if (Array.isArray(value)) return value.map((item) => sanitizePayload(item));
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(
+            Object.entries(value).map(([childKey, childValue]) => [
+                childKey,
+                sanitizePayload(childValue, childKey),
+            ]),
+        );
+    }
+
+    return value;
+}
+
 async function handleMenu(state, text, input, phone, bank) {
+    if (text === '00') {
+        state.menuPage = 2;
+        return menuReply(2);
+    }
+
+    if (state.menuPage === 2 && text === '0') {
+        state.menuPage = 1;
+        return menuReply(1);
+    }
+
     if (text === '1' || input.choice === '1' || input.intent === 'BALANCE_INQUIRY') return balance(phone, bank);
     if (text === '2' || input.choice === '2' || input.intent === 'TRANSFER') return beginTransfer(state, input, phone, bank);
     if (text === '3' || input.choice === '3' || input.intent === 'FEE_INQUIRY') return beginFeeInquiry(state, input, phone, bank);
     if (text === '4' || input.choice === '4' || input.intent === 'TRANSACTION_HISTORY') return history(phone, bank, state);
-    if (text === '5' || input.choice === '5') {
+    if (text === '5' || input.choice === '5') return beginTransfer(state, input, phone, bank);
+    if (text === '6' || input.choice === '6') return clarifyIntent();
+    if (text === '7' || input.choice === '7') return beginTransfer(state, input, phone, bank);
+    if (text === '8') {
         state.step = 'language';
 
         return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde', 'LANGUAGE_SWITCH');
     }
-    if (text === '6' || input.choice === '6' || input.intent === 'TERM_EXPLANATION') {
+    if (text === '9') return reply('Continuez sur un autre canal avec le meme numero.', 'CLARIFICATION_NEEDED');
+    if (text === '10' || input.intent === 'TERM_EXPLANATION') {
         if (input.term) return explainTerm(input.term);
         state.step = 'term';
 
         return reply('Quel terme voulez-vous comprendre ? Frais, plafond ou beneficiaire.', 'TERM_EXPLANATION');
     }
-    if (text === '7' || input.choice === '7' || input.intent === 'AIRTIME_PURCHASE') return beginAirtime(state, input, phone, bank);
+    if (input.intent === 'AIRTIME_PURCHASE') return beginAirtime(state, input, phone, bank);
 
     return clarifyIntent();
+}
+
+function menuReply(page) {
+    return page === 2
+        ? reply(MORE_MENU_TEXT, 'UNKNOWN', {}, { options: MORE_MENU })
+        : reply(MENU_TEXT, 'UNKNOWN', {}, { options: MENU });
 }
 
 function startScenario(state, selected, phone, bank) {
@@ -203,16 +281,23 @@ function startScenario(state, selected, phone, bank) {
         case '4':
             return history(phone, bank, state);
         case '5':
+        case '7':
+            return beginTransfer(state, {}, phone, bank);
+        case '6':
+            return clarifyIntent();
+        case '8':
             state.step = 'language';
             return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde', 'LANGUAGE_SWITCH');
-        case '6':
+        case '9':
+            return reply('Continuez sur un autre canal avec le meme numero.', 'CLARIFICATION_NEEDED');
+        case '10':
             state.step = 'term';
             return reply('Quel terme voulez-vous comprendre ? Frais, plafond ou beneficiaire.', 'TERM_EXPLANATION');
-        case '7':
+        case '11':
             return beginAirtime(state, {}, phone, bank);
         default:
             state.step = 'menu';
-            return reply('Safinum. Choisissez:\n' + numbered(MENU), 'UNKNOWN', {}, { options: MENU });
+            return menuReply(state.menuPage || 1);
     }
 }
 
@@ -264,19 +349,23 @@ function matchScenario(value) {
             .replace(/[^a-z0-9]+/g, ' ')
             .trim();
 
-        if (/\b(frais|fee|fees|cost)\b/.test(normalized)) return '4';
-        if (/\b(historique|history|transactions?)\b/.test(normalized)) return '5';
-        if (/\b(aide|help|term|definition)\b/.test(normalized)) return '6';
-        if (/\b(langue|language)\b/.test(normalized)) return '7';
+        if (/\b(correction|corriger|correct)\b/.test(normalized)) return '5';
+        if (/\b(ambigu|incomplete|incomplet|clarification)\b/.test(normalized)) return '6';
+        if (/\b(insuffisant|insufficient)\b/.test(normalized)) return '7';
+        if (/\b(langue|language)\b/.test(normalized)) return '8';
+        if (/\b(multicanal|multi channel|another channel|autre canal)\b/.test(normalized)) return '9';
+        if (/\b(terminologie|terme|definition|explain)\b/.test(normalized)) return '10';
+        if (/\b(frais|fee|fees|cost)\b/.test(normalized)) return '3';
+        if (/\b(historique|history|transactions?)\b/.test(normalized)) return '4';
         if (/\b(solde|balance)\b/.test(normalized)) return '1';
         if (/\b(transfert|transfer|send)\b/.test(normalized)) return '2';
-        if (/\b(airtime|recharge|credit|credit telephone|top up)\b/.test(normalized)) return '3';
+        if (/\b(airtime|recharge|credit|credit telephone|top up)\b/.test(normalized)) return '11';
     }
 
     for (const label of labels) {
         const normalized = label.toLowerCase().replace(/[_-]+/g, ' ').trim();
-        const numbered = normalized.match(/^(?:scenario\s*)?([1-7])$/)
-            || normalized.match(/^scenario\s+([1-7])\b/);
+        const numbered = normalized.match(/^(?:scenario\s*)?(10|11|[1-9])$/)
+            || normalized.match(/^scenario\s+(10|11|[1-9])\b/);
         if (numbered) return numbered[1];
     }
 
@@ -834,10 +923,6 @@ function finalize(body, language) {
 
 function pending(state) {
     return { id: state.reference || null, status: state.reference ? 'pending' : 'none' };
-}
-
-function numbered(items) {
-    return items.map((item, index) => `${index + 1}. ${item}`).join('\n');
 }
 
 function money(amount) {
