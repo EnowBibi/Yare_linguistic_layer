@@ -30,8 +30,8 @@ const SOURCE_KEYS = {
     'Montant du transfert (FCFA):': 'ussd.transfer_amount_prompt',
     'Montant des frais a calculer (FCFA):': 'ussd.fee_amount_prompt',
     'Quel terme voulez-vous comprendre ? Frais, plafond ou beneficiaire.': 'ussd.term_prompt',
-    'Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo': 'ussd.language_prompt',
-    'Choisissez 1 pour francais, 2 pour hausa ou 3 pour ewondo.': 'ussd.language_invalid',
+    'Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde': 'ussd.language_prompt',
+    'Choisissez 1 pour francais, 2 pour hausa, 3 pour ewondo, 4 pour anglais ou 5 pour fulfulde.': 'ussd.language_invalid',
     'Choisissez un numero de la liste.': 'ussd.choice_invalid',
     'Aucune operation recente.': 'ussd.history_empty',
     'Correction: indiquez le nouveau montant ou le beneficiaire.': 'ussd.correction_prompt',
@@ -100,9 +100,11 @@ const CHOICE_WORDS = {
 };
 
 const LANGUAGE_NAMES = {
-    fr: ['fr', 'francais', 'francais'],
+    fr: ['fr', 'fra', 'fre', 'francais', 'french'],
     ewo: ['ewo', 'ewondo'],
     hau: ['hau', 'hausa', 'haoussa'],
+    en: ['en', 'eng', 'english', 'anglais'],
+    fub: ['fub', 'ful', 'ff', 'fulfulde', 'fula', 'pulaar'],
 };
 
 const TERM_ALIASES = {
@@ -231,9 +233,24 @@ function parseInput(text, language) {
 }
 
 function languageCode(language) {
-    const code = String(language || '').trim().toLowerCase();
+    const raw = String(language || '').trim().toLowerCase();
+    const code = normalize(raw.split(/[-_]/, 1)[0]);
+    const aliases = {
+        anglais: 'en',
+        eng: 'en',
+        english: 'en',
+        francais: 'fr',
+        french: 'fr',
+        fra: 'fr',
+        fre: 'fr',
+        ful: 'fub',
+        fulfulde: 'fub',
+        fula: 'fub',
+        ff: 'fub',
+        pulaar: 'fub',
+    };
 
-    return /^[a-z]{2,3}$/.test(code) ? code : null;
+    return aliases[code] || (/^[a-z]{2,3}$/.test(code) ? code : null);
 }
 
 function phoneKey(phone) {
@@ -321,4 +338,4 @@ function say(text, language) {
     return { text: render(template, source.values), language: lang };
 }
 
-module.exports = { understand, say, parseInput, getLanguagePreference, setLanguagePreference };
+module.exports = { understand, say, parseInput, languageCode, getLanguagePreference, setLanguagePreference };

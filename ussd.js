@@ -20,6 +20,7 @@ const {
     understand,
     say,
     parseInput,
+    languageCode,
     getLanguagePreference,
     setLanguagePreference,
 } = require('./language');
@@ -44,7 +45,10 @@ async function handleUssd(payload, traceId) {
     const sessionId = payload.session_id || 'sans-session';
     const phone = String(payload.phone || '');
     const state = sessions.get(sessionId) || { step: 'idle' };
-    const requestedLanguage = payload.language || state.language || getLanguagePreference(phone);
+    const requestedLanguage = languageCode(payload.language || state.language || getLanguagePreference(phone))
+        || payload.language
+        || state.language
+        || getLanguagePreference(phone);
     const raw = String((payload.input && payload.input.text) || '').trim();
     const text = understand(raw, requestedLanguage);
     const input = parseInput(text, requestedLanguage);
@@ -177,7 +181,7 @@ async function handleMenu(state, text, input, phone, bank) {
     if (text === '7' || input.choice === '7') {
         state.step = 'language';
 
-        return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo', 'LANGUAGE_SWITCH');
+        return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde', 'LANGUAGE_SWITCH');
     }
 
     return clarifyIntent();
@@ -392,10 +396,12 @@ function explainTerm(term) {
 }
 
 function selectLanguage(state, text) {
-    const choices = { '1': 'fr', '2': 'hau', '3': 'ewo' };
+    const choices = { '1': 'fr', '2': 'hau', '3': 'ewo', '4': 'en', '5': 'fub' };
     const language = choices[text];
 
-    if (!language) return reply('Choisissez 1 pour francais, 2 pour hausa ou 3 pour ewondo.', 'CLARIFICATION_NEEDED');
+    if (!language) {
+        return reply('Choisissez 1 pour francais, 2 pour hausa, 3 pour ewondo, 4 pour anglais ou 5 pour fulfulde.', 'CLARIFICATION_NEEDED');
+    }
 
     state.language = language;
     state.languageOverride = true;
@@ -425,7 +431,7 @@ function amountValue(amount, text) {
 }
 
 function languageName(language) {
-    return { fr: 'francais', hau: 'Hausa', ewo: 'Ewondo' }[language] || language;
+    return { fr: 'francais', hau: 'Hausa', ewo: 'Ewondo', en: 'English', fub: 'Fulfulde' }[language] || language;
 }
 
 function normalizePhone(value) {

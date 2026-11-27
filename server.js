@@ -42,6 +42,8 @@ const server = http.createServer(async (req, res) => {
     const traceId = req.headers['x-trace-id'] || payload.trace_id || null;
 
     try {
+        if (payload.type !== 'ui_translation') logScenarioPayload(payload);
+
         const reply = payload.type === 'ui_translation' ? handleUi(payload) : await handleUssd(payload, traceId);
 
         send(res, 200, reply);
@@ -52,6 +54,52 @@ const server = http.createServer(async (req, res) => {
         send(res, 500, { error: String(error && error.message ? error.message : error) });
     }
 });
+
+function logScenarioPayload(payload) {
+    const scenarioFields = [];
+
+    function inspect(value, prefix = '', depth = 0) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+
+        for (const [key, fieldValue] of Object.entries(value)) {
+            const field = prefix ? `${prefix}.${key}` : key;
+
+            if (/(scenario|test.?case|flow.?name)/i.test(key)) {
+                let summary;
+
+                if (['string', 'number', 'boolean'].includes(typeof fieldValue)) {
+                    summary = String(fieldValue).slice(0, 100);
+                } else if (Array.isArray(fieldValue)) {
+                    summary = `array(${fieldValue.length})`;
+                } else if (fieldValue && typeof fieldValue === 'object') {
+                    const labels = Object.entries(fieldValue)
+                        .filter(([name, value]) =>
+                            /^(id|name|label|slug|code|value)$/i.test(name)
+                            && ['string', 'number', 'boolean'].includes(typeof value),
+                        )
+                        .map(([name, value]) => `${name}=${String(value).slice(0, 100)}`);
+
+                    summary = `object keys: ${Object.keys(fieldValue).join(', ')}${labels.length ? `; ${labels.join(', ')}` : ''}`;
+                } else {
+                    summary = String(fieldValue);
+                }
+
+                scenarioFields.push({ field, value: summary });
+            }
+
+            if (depth < 2 && fieldValue && typeof fieldValue === 'object' && !Array.isArray(fieldValue)) {
+                inspect(fieldValue, field, depth + 1);
+            }
+        }
+    }
+
+    inspect(payload);
+    console.log('[USSD scenario diagnostic]', JSON.stringify({
+        payloadKeys: Object.keys(payload),
+        inputKeys: Object.keys(payload.input || {}),
+        scenarioFields,
+    }));
+}
 
 server.listen(PORT, () => {
     console.log(`Middleware à l'écoute sur http://localhost:${PORT}`);
