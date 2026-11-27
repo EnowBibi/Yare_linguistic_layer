@@ -92,7 +92,7 @@
     "ussd.airtime_option": "Sayi katin waya",
     "ussd.confirm": "Tabbatar",
     "ussd.cancel": "Soke",
-    "ussd.menu": "Safinum. Zabi:\n1. Ragowar kudi\n2. Aika kudi\n3. Sayi katin waya\n4. Kudin sabis\n5. Tarihi\n6. Taimako\n7. Harshe",
+    "ussd.menu": "Safinum. Zabi:\n1. Ragowar kudi\n2. Aika kudi\n3. Kudin sabis\n4. Tarihi\n5. Harshe\n6. Taimako\n7. Sayi katin waya",
     "ussd.invalid_menu": "Zabi bai dace ba.\n1. Ragowar kudi\n2. Sayi katin waya",
     "ussd.clarify_intent": "Ban gane ba. Kana son duba ragowar kudi, aika kudi, sayen kati, duba tarihi ko kudin sabis?",
     "ussd.target_prompt": "Katin waya wa:\n1. Lambata\n2. Wata lamba",

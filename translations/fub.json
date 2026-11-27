@@ -93,7 +93,7 @@
   "ussd.airtime_option": "Soddin telefon",
   "ussd.confirm": "Tabbitin",
   "ussd.cancel": "Dartin",
-  "ussd.menu": "Safinum. Subo:\n1. Ceede e kont\n2. Neldir ceede\n3. Soddin telefon\n4. Bolde\n5. Daartol\n6. Humpito\n7. Waylu demngal",
+  "ussd.menu": "Safinum. Subo:\n1. Ceede e kont\n2. Neldir ceede\n3. Bolde\n4. Daartol\n5. Waylu demngal\n6. Humpito\n7. Soddin telefon",
   "ussd.invalid_menu": "Suborgol moyyaani.\n1. Ceede e kont\n2. Soddin telefon",
   "ussd.clarify_intent": "Mi faamaani. A yidi yiyde ceede maa, neldude ceede, soddinde telefon, yiyde daartol walla yeewtaade bolde?",
   "ussd.target_prompt": "Soddin telefon:\n1. Numbur am\n2. Numbur goddo",

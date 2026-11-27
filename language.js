@@ -9,7 +9,7 @@ const languagePreferences = new Map();
 const SOURCE_KEYS = {
     'Mon solde': 'ussd.balance_option',
     "Transfert d'argent": 'ussd.transfer_option',
-    'Credit telephone': 'ussd.history_type_airtime',
+    'Credit telephone': 'ussd.airtime_option',
     'Frais': 'ussd.fees_option',
     'Historique': 'ussd.history_option',
     'Aide': 'ussd.help_option',
@@ -24,7 +24,7 @@ const SOURCE_KEYS = {
     'Annulee': 'ussd.history_status_cancelled',
     Confirmer: 'ussd.confirm',
     Annuler: 'ussd.cancel',
-    'Safinum. Choisissez:\n1. Mon solde\n2. Transfert d\'argent\n3. Credit telephone\n4. Frais\n5. Historique\n6. Aide\n7. Langue': 'ussd.menu',
+    'Safinum. Choisissez:\n1. Mon solde\n2. Transfert d\'argent\n3. Frais\n4. Historique\n5. Langue\n6. Aide\n7. Credit telephone': 'ussd.menu',
     "Je n'ai pas compris. Voulez-vous consulter votre solde, faire un transfert, acheter du credit, voir l'historique ou demander les frais ?": 'ussd.clarify_intent',
     'Beneficiaire (numero ou nom):': 'ussd.beneficiary_prompt',
     'Montant du transfert (FCFA):': 'ussd.transfer_amount_prompt',

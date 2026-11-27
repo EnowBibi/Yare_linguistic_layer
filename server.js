@@ -46,6 +46,10 @@ const server = http.createServer(async (req, res) => {
 
         const reply = payload.type === 'ui_translation' ? handleUi(payload) : await handleUssd(payload, traceId);
 
+        if (payload.type !== 'ui_translation') {
+            console.log('[USSD response body]', JSON.stringify(reply, null, 2));
+        }
+
         send(res, 200, reply);
     } catch (error) {
         // Un vrai bug : on le laisse visible (statut 500, message dans le

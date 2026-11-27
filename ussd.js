@@ -34,11 +34,11 @@ const sessions = new Map();
 const MENU = [
     'Mon solde',
     "Transfert d'argent",
-    'Credit telephone',
     'Frais',
     'Historique',
-    'Aide',
     'Langue',
+    'Aide',
+    'Credit telephone',
 ];
 
 async function handleUssd(payload, traceId) {
@@ -56,7 +56,12 @@ async function handleUssd(payload, traceId) {
 
     if (payload.language) setLanguagePreference(phone, payload.language);
     applyRequestedLanguage(state, requestedLanguage);
-    const body = await route(state, text, input, phone, bank);
+    const selectedScenario = raw === '' && ['idle', 'menu'].includes(state.step)
+        ? scenarioChoiceFromPayload(payload)
+        : null;
+    const body = selectedScenario
+        ? await startScenario(state, selectedScenario, phone, bank)
+        : await route(state, text, input, phone, bank);
 
     if (body.response.end_session) sessions.delete(sessionId);
     else sessions.set(sessionId, state);
@@ -169,22 +174,113 @@ async function route(state, text, input, phone, bank) {
 async function handleMenu(state, text, input, phone, bank) {
     if (text === '1' || input.choice === '1' || input.intent === 'BALANCE_INQUIRY') return balance(phone, bank);
     if (text === '2' || input.choice === '2' || input.intent === 'TRANSFER') return beginTransfer(state, input, phone, bank);
-    if (text === '3' || input.choice === '3' || input.intent === 'AIRTIME_PURCHASE') return beginAirtime(state, input, phone, bank);
-    if (text === '4' || input.choice === '4' || input.intent === 'FEE_INQUIRY') return beginFeeInquiry(state, input, phone, bank);
-    if (text === '5' || input.choice === '5' || input.intent === 'TRANSACTION_HISTORY') return history(phone, bank, state);
+    if (text === '3' || input.choice === '3' || input.intent === 'FEE_INQUIRY') return beginFeeInquiry(state, input, phone, bank);
+    if (text === '4' || input.choice === '4' || input.intent === 'TRANSACTION_HISTORY') return history(phone, bank, state);
+    if (text === '5' || input.choice === '5') {
+        state.step = 'language';
+
+        return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde', 'LANGUAGE_SWITCH');
+    }
     if (text === '6' || input.choice === '6' || input.intent === 'TERM_EXPLANATION') {
         if (input.term) return explainTerm(input.term);
         state.step = 'term';
 
         return reply('Quel terme voulez-vous comprendre ? Frais, plafond ou beneficiaire.', 'TERM_EXPLANATION');
     }
-    if (text === '7' || input.choice === '7') {
-        state.step = 'language';
-
-        return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde', 'LANGUAGE_SWITCH');
-    }
+    if (text === '7' || input.choice === '7' || input.intent === 'AIRTIME_PURCHASE') return beginAirtime(state, input, phone, bank);
 
     return clarifyIntent();
+}
+
+function startScenario(state, selected, phone, bank) {
+    switch (selected) {
+        case '1':
+            return balance(phone, bank);
+        case '2':
+            return beginTransfer(state, {}, phone, bank);
+        case '3':
+            return beginFeeInquiry(state, {}, phone, bank);
+        case '4':
+            return history(phone, bank, state);
+        case '5':
+            state.step = 'language';
+            return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde', 'LANGUAGE_SWITCH');
+        case '6':
+            state.step = 'term';
+            return reply('Quel terme voulez-vous comprendre ? Frais, plafond ou beneficiaire.', 'TERM_EXPLANATION');
+        case '7':
+            return beginAirtime(state, {}, phone, bank);
+        default:
+            state.step = 'menu';
+            return reply('Safinum. Choisissez:\n' + numbered(MENU), 'UNKNOWN', {}, { options: MENU });
+    }
+}
+
+function scenarioChoiceFromPayload(payload) {
+    let selected = null;
+
+    function inspect(value, depth = 0) {
+        if (!value || typeof value !== 'object' || depth > 8 || selected) return;
+
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                inspect(item, depth + 1);
+                if (selected) return;
+            }
+            return;
+        }
+
+        for (const [key, fieldValue] of Object.entries(value)) {
+            if (/(scenario|test.?case|flow.?name)/i.test(key)) {
+                selected = matchScenario(fieldValue);
+                if (selected) return;
+            }
+
+            if (fieldValue && typeof fieldValue === 'object') inspect(fieldValue, depth + 1);
+            if (selected) return;
+        }
+    }
+
+    inspect(payload);
+
+    return selected;
+}
+
+function matchScenario(value) {
+    const labels = typeof value === 'string' || typeof value === 'number'
+        ? [String(value)]
+        : value && typeof value === 'object' && !Array.isArray(value)
+            ? ['name', 'label', 'slug', 'value', 'code', 'id']
+                .map((key) => value[key])
+                .filter((item) => typeof item === 'string' || typeof item === 'number')
+                .map(String)
+            : [];
+
+    for (const label of labels) {
+        const normalized = label
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+
+        if (/\b(frais|fee|fees|cost)\b/.test(normalized)) return '4';
+        if (/\b(historique|history|transactions?)\b/.test(normalized)) return '5';
+        if (/\b(aide|help|term|definition)\b/.test(normalized)) return '6';
+        if (/\b(langue|language)\b/.test(normalized)) return '7';
+        if (/\b(solde|balance)\b/.test(normalized)) return '1';
+        if (/\b(transfert|transfer|send)\b/.test(normalized)) return '2';
+        if (/\b(airtime|recharge|credit|credit telephone|top up)\b/.test(normalized)) return '3';
+    }
+
+    for (const label of labels) {
+        const normalized = label.toLowerCase().replace(/[_-]+/g, ' ').trim();
+        const numbered = normalized.match(/^(?:scenario\s*)?([1-7])$/)
+            || normalized.match(/^scenario\s+([1-7])\b/);
+        if (numbered) return numbered[1];
+    }
+
+    return null;
 }
 
 async function beginTransfer(state, input, phone, bank) {

@@ -92,7 +92,7 @@
     "ussd.airtime_option": "Buy airtime",
     "ussd.confirm": "Confirm",
     "ussd.cancel": "Cancel",
-    "ussd.menu": "Safinum. Choose:\n1. Check balance\n2. Send money\n3. Buy airtime\n4. Check fees\n5. Transaction history\n6. Explain a term\n7. Change language",
+    "ussd.menu": "Safinum. Choose:\n1. Check balance\n2. Send money\n3. Check fees\n4. Transaction history\n5. Change language\n6. Explain a term\n7. Buy airtime",
     "ussd.invalid_menu": "Invalid choice.\n1. Check balance\n2. Buy airtime",
     "ussd.clarify_intent": "I didn't understand. Do you want to check your balance, send money, buy airtime, view history, or check a fee?",
     "ussd.target_prompt": "Buy airtime for:\n1. My number\n2. Another number",

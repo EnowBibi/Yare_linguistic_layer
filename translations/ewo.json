@@ -92,7 +92,7 @@
   "ussd.airtime_option": "Kus kredi",
   "ussd.confirm": "Yemete",
   "ussd.cancel": "Vaa",
-  "ussd.menu": "Safinum. Tobo:\n1. Moni a li'i\n2. Lom moni\n3. Kus kredi\n4. Manga\n5. Mam me moni\n6. Vekela\n7. Kalate",
+  "ussd.menu": "Safinum. Tobo:\n1. Moni a li'i\n2. Lom moni\n3. Manga\n4. Mam me moni\n5. Kalate\n6. Vekela\n7. Kus kredi",
   "ussd.invalid_menu": "Tobo e nji yem. Tobo:\n1. Moni a li'i\n2. Kus kredi",
   "ussd.clarify_intent": "Tobo e nji yem. Wa yi fombo moni, lom moni, kus kredi, mam me boban nge manga?",
   "ussd.target_prompt": "Kredi asu:\n1. Nimero wua\n2. Nimero mfe",
