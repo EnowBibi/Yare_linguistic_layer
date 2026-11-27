@@ -42,7 +42,10 @@ function createBank(baseUrl, traceId) {
         balance: (phone) => call('GET', `/accounts/${id(phone)}`),
         history: (phone, limit = 5) => call('GET', `/accounts/${id(phone)}/transactions?limit=${limit}`),
         fees: (type, amount) => call('GET', `/fees?type=${id(type)}&amount=${id(amount)}`),
+        beneficiaries: (query, phone) =>
+            call('GET', `/beneficiaries?q=${id(query || '')}&phone=${id(phone || '')}`),
         createTransaction: (body) => call('POST', '/transactions', body),
+        update: (reference, body) => call('POST', `/transactions/${id(reference)}/update`, body),
         confirm: (reference) => call('POST', `/transactions/${id(reference)}/confirm`),
         cancel: (reference) => call('POST', `/transactions/${id(reference)}/cancel`),
     };

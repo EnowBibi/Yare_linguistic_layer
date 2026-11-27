@@ -16,13 +16,16 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { getLanguagePreference, setLanguagePreference } = require('./language');
 
 const DICTIONARIES = path.join(__dirname, 'translations');
 
 function handleUi(payload) {
-    const requested = String(payload.language || 'fr');
+    const phone = payload.phone || '';
+    const requested = String(payload.language || getLanguagePreference(phone) || 'fr');
     const source = payload.strings || {};
     const dictionary = load(requested);
+    if (payload.language) setLanguagePreference(phone, requested);
 
     // Pas de dictionnaire pour cette langue : on renvoie le français et on le
     // DÉCLARE. C'est la réponse honnête ; inventer une langue serait repéré.

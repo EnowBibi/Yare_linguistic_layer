@@ -4,14 +4,40 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const DICTIONARIES = path.join(__dirname, 'translations');
+const languagePreferences = new Map();
 
 const SOURCE_KEYS = {
     'Mon solde': 'ussd.balance_option',
-    'Transfert de credit': 'ussd.airtime_option',
+    "Transfert d'argent": 'ussd.transfer_option',
+    'Credit telephone': 'ussd.history_type_airtime',
+    'Frais': 'ussd.fees_option',
+    'Historique': 'ussd.history_option',
+    'Aide': 'ussd.help_option',
+    'Langue': 'ussd.language_option',
+    'Transfert': 'ussd.history_type_transfer',
+    'Paiement de facture': 'ussd.history_type_bill',
+    'Retrait': 'ussd.history_type_withdrawal',
+    'Operation': 'ussd.history_type_other',
+    'En attente': 'ussd.history_status_pending',
+    'Terminee': 'ussd.history_status_confirmed',
+    'Echouee': 'ussd.history_status_failed',
+    'Annulee': 'ussd.history_status_cancelled',
     Confirmer: 'ussd.confirm',
     Annuler: 'ussd.cancel',
-    'Safinum. Choisissez:\n1. Mon solde\n2. Transfert de credit': 'ussd.menu',
-    'Choix invalide.\n1. Mon solde\n2. Transfert de credit': 'ussd.invalid_menu',
+    'Safinum. Choisissez:\n1. Mon solde\n2. Transfert d\'argent\n3. Credit telephone\n4. Frais\n5. Historique\n6. Aide\n7. Langue': 'ussd.menu',
+    "Je n'ai pas compris. Voulez-vous consulter votre solde, faire un transfert, acheter du credit, voir l'historique ou demander les frais ?": 'ussd.clarify_intent',
+    'Beneficiaire (numero ou nom):': 'ussd.beneficiary_prompt',
+    'Montant du transfert (FCFA):': 'ussd.transfer_amount_prompt',
+    'Montant des frais a calculer (FCFA):': 'ussd.fee_amount_prompt',
+    'Quel terme voulez-vous comprendre ? Frais, plafond ou beneficiaire.': 'ussd.term_prompt',
+    'Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo': 'ussd.language_prompt',
+    'Choisissez 1 pour francais, 2 pour hausa ou 3 pour ewondo.': 'ussd.language_invalid',
+    'Choisissez un numero de la liste.': 'ussd.choice_invalid',
+    'Aucune operation recente.': 'ussd.history_empty',
+    'Correction: indiquez le nouveau montant ou le beneficiaire.': 'ussd.correction_prompt',
+    'Les frais sont le montant preleve par la banque pour effectuer une operation.': 'ussd.term_fee',
+    'Le plafond est le montant maximum autorise par operation.': 'ussd.term_limit',
+    "Le beneficiaire est la personne qui recoit l'argent.": 'ussd.term_beneficiary',
     'Credit pour:\n1. Mon numero\n2. Un autre numero': 'ussd.target_prompt',
     'Tapez 1 (mon numero) ou 2 (un autre numero).': 'ussd.target_invalid',
     'Numero a recharger (9 chiffres):': 'ussd.phone_prompt',
@@ -29,16 +55,38 @@ const SOURCE_KEYS = {
     'Compte introuvable.': 'ussd.error_unknown_account',
     'Service momentanement indisponible. Reessayez plus tard.': 'ussd.error_unreachable',
     'Operation impossible. Reessayez plus tard.': 'ussd.error_generic',
+    'Reponse invalide du service bancaire.': 'ussd.error_invalid_response',
+    'Plusieurs beneficiaires portent ce nom. Choisissez un numero.': 'ussd.multiple_beneficiaries',
 };
 
 const DYNAMIC_SOURCES = [
     {
-        pattern: /^Votre solde est de (?<balance>.+)\.$/,
-        key: 'ussd.balance',
+        pattern: /^Langue changee: (?<language>.+)\.$/,
+        key: 'ussd.language_changed',
+    },
+    {
+        pattern: /^Frais pour (?<amount>.+): (?<fee>.+)\. Total: (?<total>.+)\.$/,
+        key: 'ussd.fee_quote',
+    },
+    {
+        pattern: /^Transfert de (?<amount>.+) a (?<recipient>.+)\. Frais (?<fee>.+), total (?<total>.+)\.\n1\. Confirmer\n2\. Annuler$/,
+        key: 'ussd.transfer_review',
+    },
+    {
+        pattern: /^Transfert de (?<amount>.+) envoye a (?<recipient>.+)\. Reference (?<reference>.+)\.$/,
+        key: 'ussd.transfer_sent',
     },
     {
         pattern: /^Credit (?<operator>.+) de (?<amount>.+) pour le (?<phone>.+)\. Frais (?<fee>.+), total (?<total>.+)\.\n1\. Confirmer\n2\. Annuler$/,
         key: 'ussd.airtime_review',
+    },
+    {
+        pattern: /^Vous avez (?<count>\d+) operation\(s\)\. Dernieres: (?<entries>.+)\.$/,
+        key: 'ussd.history_summary',
+    },
+    {
+        pattern: /^Votre solde est de (?<balance>.+)\.$/,
+        key: 'ussd.balance',
     },
     {
         pattern: /^Credit de (?<amount>.+) envoye au (?<phone>.+)\. Ref (?<reference>.+)\.$/,
@@ -46,26 +94,21 @@ const DYNAMIC_SOURCES = [
     },
 ];
 
-const INPUT_ALIASES = {
-    ewo: {
-        '1': ['1', 'un', 'une', 'premier', 'premiere', 'mon solde', 'solde', 'balance', 'moni a lii', 'moni'],
-        '2': ['2', 'deux', 'deuxieme', 'transfert', 'transfert de credit', 'credit', 'kus kredi', 'kredi', 'autre numero'],
-    },
-    hau: {
-        '1': ['1', 'un', 'une', 'premier', 'premiere', 'mon solde', 'solde', 'balance', 'ragowar kudi', 'kudin asusu', 'daya', 'na farko'],
-        '2': ['2', 'deux', 'deuxieme', 'transfert', 'transfert de credit', 'credit', 'sayi katin waya', 'katin waya', 'biyu', 'na biyu', 'wata lamba'],
-    },
+const CHOICE_WORDS = {
+    '1': ['un', 'une', 'premier', 'premiere', 'daya', 'na farko'],
+    '2': ['deux', 'deuxieme', 'biyu', 'na biyu'],
 };
 
-const CONFIRM_ALIASES = {
-    ewo: {
-        '1': ['oui', 'yes', 'confirmer', 'confirme', 'yemete', 'kome yemete'],
-        '2': ['non', 'no', 'annuler', 'annule', 'vaa'],
-    },
-    hau: {
-        '1': ['oui', 'yes', 'confirmer', 'confirme', 'tabbatar', 'eh', 'e'],
-        '2': ['non', 'no', 'annuler', 'annule', 'soke', 'aa', "a'a"],
-    },
+const LANGUAGE_NAMES = {
+    fr: ['fr', 'francais', 'francais'],
+    ewo: ['ewo', 'ewondo'],
+    hau: ['hau', 'hausa', 'haoussa'],
+};
+
+const TERM_ALIASES = {
+    fee: ['frais', 'fee', 'fees', 'manga', 'maŋga', 'kudin sabis'],
+    limit: ['plafond', 'limite', 'limit', 'iyaka', 'nne'],
+    beneficiary: ['beneficiaire', 'beneficiary', 'recipient', 'mai karba', 'nyo a kos'],
 };
 
 function normalize(text) {
@@ -85,10 +128,127 @@ function normalize(text) {
         .replace(/\s+/g, ' ');
 }
 
+function containsAny(text, words) {
+    return words.some((word) => text.includes(normalize(word)));
+}
+
+function extractAmount(text) {
+    const match = text.match(/(?:^|\D)(\d{1,6}(?:[ .,]\d{3})?)(?!\d)/);
+
+    if (!match) return null;
+
+    const amount = Number(match[1].replace(/[ .,]/g, ''));
+
+    return Number.isInteger(amount) && amount > 0 ? amount : null;
+}
+
+function extractRecipient(text) {
+    const phone = text.match(/(?:237)?6\d{8}/);
+    if (phone) return phone[0];
+
+    const match = text.match(/(?:to|for|pour|a|à|zuwa|ga)\s+([\p{L}][\p{L}\s'-]{1,40})/iu);
+
+    if (!match) return null;
+
+    const recipient = match[1].trim();
+
+    return /^\d[\d\s.,]*$/.test(recipient) ? null : recipient;
+}
+
+function parseInput(text, language) {
+    const original = String(text == null ? '' : text).trim();
+    const normalized = normalize(original);
+    const amount = /^[1-7]$/.test(normalized) ? null : extractAmount(original);
+    const recipient = extractRecipient(original);
+    let choice = /^[1-7]$/.test(normalized) ? normalized : null;
+
+    if (!choice) {
+        for (const [number, words] of Object.entries(CHOICE_WORDS)) {
+            if (words.some((word) => normalize(word) === normalized)) {
+                choice = number;
+                break;
+            }
+        }
+    }
+
+    for (const [code, names] of Object.entries(LANGUAGE_NAMES)) {
+        if (
+            new RegExp(`(?:language|langue|harshe|switch|change|changer|parle|speak)\\s+(?:to|en|vers|zuwa)?\\s*(?:${names.join('|')})\\b`).test(normalized) ||
+            (names.includes(normalized) && normalized !== String(language || '').toLowerCase())
+        ) {
+            return { intent: 'LANGUAGE_SWITCH', language: code };
+        }
+    }
+
+    if (choice) return { intent: 'UNKNOWN', choice, amount, recipient };
+
+    if (containsAny(normalized, ['corrige', 'correction', 'modifier', 'change', 'correct', 'instead', 'gyara'])) {
+        return { intent: 'CORRECTION', amount, recipient };
+    }
+
+    if (['oui', 'yes', 'eh', 'tabbatar', 'confirmer', 'yemete'].includes(normalized)) {
+        return { intent: 'CONFIRM', amount, recipient };
+    }
+    if (['non', 'no', 'soke', 'annuler', 'vaa', 'aa'].includes(normalized)) {
+        return { intent: 'CANCEL', amount, recipient };
+    }
+
+    const term = Object.entries(TERM_ALIASES).find(([, words]) => containsAny(normalized, words));
+    if (term && containsAny(normalized, ['explique', 'signifie', 'definition', 'meaning', 'explain', 'what is', 'cest quoi', 'bayani', 'fombo'])) {
+        return { intent: 'TERM_EXPLANATION', term: term[0], amount, recipient };
+    }
+
+    if (containsAny(normalized, ['historique', 'history', 'transactions', 'tarihi', 'mam me nga bôban', 'mam me moni'])) {
+        return { intent: 'TRANSACTION_HISTORY', amount, recipient };
+    }
+
+    if (containsAny(normalized, ['frais', 'fee', 'fees', 'combien coute', 'combien ca coute', 'cost', 'how much', 'kudin sabis', 'manga', 'maŋga'])) {
+        return { intent: 'FEE_INQUIRY', term: term && term[0], amount, recipient };
+    }
+
+    if (containsAny(normalized, ['solde', 'balance', 'moni a lii', 'ragowar kudi', 'kudin asusu'])) {
+        return { intent: 'BALANCE_INQUIRY', amount, recipient };
+    }
+
+    if (containsAny(normalized, ['airtime', 'credit', 'kredi', 'recharge', 'recharger', 'katin waya', 'top up'])) {
+        return { intent: 'AIRTIME_PURCHASE', amount, recipient };
+    }
+
+    if (containsAny(normalized, ['transfer', 'transfert', 'transfere', 'envoyer', 'envoie', 'send', 'aika kudi', 'lom moni'])) {
+        return { intent: 'TRANSFER', amount, recipient };
+    }
+
+    if (containsAny(normalized, ['beneficiaire', 'beneficiary', 'recipient'])) {
+        return { intent: 'TERM_EXPLANATION', term: 'beneficiary', amount, recipient };
+    }
+
+    if (containsAny(normalized, ['plafond', 'limite', 'limit', 'iyaka'])) {
+        return { intent: 'TERM_EXPLANATION', term: 'limit', amount, recipient };
+    }
+    if (term) return { intent: 'TERM_EXPLANATION', term: term[0], amount, recipient };
+
+    return { intent: 'UNKNOWN', amount, recipient };
+}
+
 function languageCode(language) {
     const code = String(language || '').trim().toLowerCase();
 
     return /^[a-z]{2,3}$/.test(code) ? code : null;
+}
+
+function phoneKey(phone) {
+    return String(phone || '').replace(/\D/g, '');
+}
+
+function getLanguagePreference(phone) {
+    return languagePreferences.get(phoneKey(phone)) || null;
+}
+
+function setLanguagePreference(phone, language) {
+    const key = phoneKey(phone);
+    const code = languageCode(language);
+
+    if (key && code) languagePreferences.set(key, code);
 }
 
 function loadDictionary(language) {
@@ -131,24 +291,11 @@ function render(template, values) {
  */
 function understand(text, language) {
     const value = String(text == null ? '' : text).trim();
-    const digits = value.replace(/[٠-٩۰-۹]/g, (digit) => {
+    return value.replace(/[٠-٩۰-۹]/g, (digit) => {
         const code = digit.charCodeAt(0);
 
         return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
     });
-    const lang = languageCode(language);
-
-    if (!lang || !Object.prototype.hasOwnProperty.call(INPUT_ALIASES, lang)) return digits;
-
-    const normalized = normalize(digits);
-
-    for (const aliases of [INPUT_ALIASES[lang], CONFIRM_ALIASES[lang]]) {
-        for (const [choice, words] of Object.entries(aliases)) {
-            if (words.some((word) => normalize(word) === normalized)) return choice;
-        }
-    }
-
-    return digits;
 }
 
 /**
@@ -174,4 +321,4 @@ function say(text, language) {
     return { text: render(template, source.values), language: lang };
 }
 
-module.exports = { understand, say };
+module.exports = { understand, say, parseInput, getLanguagePreference, setLanguagePreference };
