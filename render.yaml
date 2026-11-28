@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: safinum-linguistic-layer
+    runtime: node
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: SAFINUM_TEAM_KEY
+        sync: false
+      - key: SAFINUM_AUTO_REGISTER
+        value: "true"
+      - key: SAFINUM_CHANNELS
+        value: ussd,mobile,web,sms,atm
+      - key: SAFINUM_REGISTRATION_URL
+        value: https://safinum.cm/api/v1/sandbox/endpoint

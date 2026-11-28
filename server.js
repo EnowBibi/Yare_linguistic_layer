@@ -1,8 +1,9 @@
 // Kit de démarrage SAFINUM Innovate Challenge 2026 — Node.js 18+, aucune dépendance.
 //
-// La passerelle POSTe chaque tour ici. Deux sortes de requêtes arrivent sur
+// La passerelle POSTe chaque tour ici. Plusieurs sortes de requêtes arrivent sur
 // la même URL :
 //   - USSD            : payload.input.text  → ussd.js (menus + appels bancaires)
+//   - SMS             : channel === "sms" → sms.js (contexte par numéro)
 //   - mobile et web   : payload.type === 'ui_translation' → ui.js (traduire un écran)
 //
 // Lancer : node server.js   (puis exposer le port avec un tunnel, voir README.md)
@@ -15,6 +16,7 @@ loadEnv();
 const { handleUssd } = require('./ussd');
 const { handleUi } = require('./ui');
 const { handleSms } = require('./sms');
+const { registerSandboxEndpoints } = require('./sandbox-registration');
 
 const PORT = Number(process.env.PORT || 8080);
 
@@ -117,5 +119,11 @@ server.listen(PORT, () => {
 
     if (!process.env.SAFINUM_TEAM_KEY) {
         console.warn('ATTENTION : SAFINUM_TEAM_KEY est vide. Copiez .env.example en .env et collez votre clé.');
+    }
+
+    if (process.env.SAFINUM_AUTO_REGISTER === 'true') {
+        registerSandboxEndpoints().catch((error) => {
+            console.error('[Sandbox registration] automatic registration did not complete:', error.message);
+        });
     }
 });
