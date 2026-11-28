@@ -3,6 +3,7 @@
 Un middleware qui **respecte le contrat** de la sandbox sur plusieurs canaux :
 
 - **USSD** : menu, consultation du solde, transfert de crédit (vers son numéro ou un autre), avec récapitulatif puis confirmation dans un tour séparé.
+- **IVR** : les tours audio sont transcrits puis traités par le même parcours que l'USSD. Configurez `VOICE_STT_API_KEY` (et, si besoin, `VOICE_STT_URL` et `VOICE_STT_MODEL`) pour activer la transcription.
 - **SMS** : mêmes parcours que l'USSD, avec contexte conservé par numéro lorsque `session_id` est absent.
 - **Mobile et web** : traduction des écrans de l'application bancaire (`ui_translation`).
 
@@ -33,11 +34,11 @@ Notez l'URL `https://...` affichée. Les URL gratuites changent à chaque redém
 
 ## Déployer sur Render
 
-Le dépôt contient un Blueprint `render.yaml`. Dans Render, créez un Blueprint depuis ce dépôt et fournissez `SAFINUM_TEAM_KEY` lorsque demandé. Render publiera le service en HTTPS; au démarrage, le serveur enregistrera automatiquement cette URL pour les canaux `ussd`, `mobile`, `web` et `sms`.
+Le dépôt contient un Blueprint `render.yaml`. Dans Render, créez un Blueprint depuis ce dépôt et fournissez `SAFINUM_TEAM_KEY` lorsque demandé. Render publiera le service en HTTPS; au démarrage, le serveur enregistrera automatiquement cette URL pour les canaux `ussd`, `mobile`, `web`, `sms` et `ivr`.
 
 La clé est un secret Render : ne la mettez pas dans `render.yaml`, dans Git ou dans une capture d'écran. Après le déploiement, vérifiez `/health` et consultez les journaux Render pour confirmer que chaque canal a été enregistré. `SAFINUM_AUTO_REGISTER` peut être désactivé si vous préférez configurer les URL manuellement.
 
-Les états de conversation restent en mémoire : un redémarrage Render les efface. Gardez une seule instance pour cette version, et choisissez une instance toujours active pour éviter les délais de réveil pendant une démonstration. L'ATM n'est pas enregistré automatiquement : le dépôt ne fournit pas encore de gestionnaire de transactions ATM.
+Les états de conversation restent en mémoire : un redémarrage Render les efface. Gardez une seule instance pour cette version, et choisissez une instance toujours active pour éviter les délais de réveil pendant une démonstration. L'ATM n'est pas enregistré : le dépôt fournit des textes de traduction ATM, mais pas de gestionnaire de requêtes ou de transactions ATM.
 
 ## 3. Déclarer votre URL
 
@@ -47,7 +48,7 @@ curl -X POST https://safinum.cm/api/v1/sandbox/endpoint \
   -d '{"channel": "ussd", "url": "https://VOTRE-TUNNEL"}'
 ```
 
-Pour l'inscription manuelle, envoyez une requête pour chaque canal activé (`ussd`, `mobile`, `web` et `sms`) ; la même URL peut servir ces canaux, le kit aiguille selon le contenu de la requête.
+Pour l'inscription manuelle, envoyez une requête pour chaque canal activé (`ussd`, `mobile`, `web`, `sms` et `ivr`) ; la même URL peut servir ces canaux, le kit aiguille selon le contenu de la requête.
 
 ## 4. Tester
 

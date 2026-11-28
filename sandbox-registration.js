@@ -1,4 +1,4 @@
-const DEFAULT_CHANNELS = ['ussd', 'mobile', 'web', 'sms'];
+const DEFAULT_CHANNELS = ['ussd', 'mobile', 'web', 'sms', 'ivr'];
 const ALLOWED_CHANNELS = new Set(DEFAULT_CHANNELS);
 const DEFAULT_REGISTRATION_URL = 'https://safinum.cm/api/v1/sandbox/endpoint';
 const MAX_ATTEMPTS = 3;
