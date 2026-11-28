@@ -16,6 +16,7 @@
 // le même tour que la saisie du montant est signalé comme non réaliste.
 
 const { createBank } = require('./bank');
+const { transcribe } = require('./voice');
 const {
     understand,
     say,
@@ -61,7 +62,20 @@ async function handleUssd(payload, traceId) {
         || payload.language
         || state.language
         || getLanguagePreference(phone);
-    const raw = readUssdInput(payload.input);
+
+    let raw = readUssdInput(payload.input);
+    if (payload.channel === 'ivr' && payload.input && payload.input.type === 'audio') {
+        const transcription = await transcribe(payload.input.audio, requestedLanguage);
+
+        if (!transcription.ok) {
+            const body = reply(transcription.error, 'CLARIFICATION_NEEDED');
+            sessions.set(sessionId, state);
+            return finalize(body, state.language || requestedLanguage);
+        }
+
+        raw = transcription.text;
+    }
+
     const text = understand(raw, requestedLanguage);
     const input = parseInput(text, requestedLanguage);
     const bank = createBank(payload.bank_api && payload.bank_api.base_url, traceId);
