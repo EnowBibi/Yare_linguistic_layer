@@ -12,6 +12,6 @@ services:
       - key: SAFINUM_AUTO_REGISTER
         value: "true"
       - key: SAFINUM_CHANNELS
-        value: ussd,mobile,web,sms,ivr
+        value: ussd,mobile,web,sms,ivr,atm
       - key: SAFINUM_REGISTRATION_URL
         value: https://safinum.cm/api/v1/sandbox/endpoint

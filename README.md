@@ -5,7 +5,7 @@ Un middleware qui **respecte le contrat** de la sandbox sur plusieurs canaux :
 - **USSD** : menu, consultation du solde, transfert de crédit (vers son numéro ou un autre), avec récapitulatif puis confirmation dans un tour séparé.
 - **IVR** : les tours audio sont transcrits puis traités par le même parcours que l'USSD. Configurez `VOICE_STT_API_KEY` (et, si besoin, `VOICE_STT_URL` et `VOICE_STT_MODEL`) pour activer la transcription.
 - **SMS** : mêmes parcours que l'USSD, avec contexte conservé par numéro lorsque `session_id` est absent.
-- **Mobile et web** : traduction des écrans de l'application bancaire (`ui_translation`).
+- **Mobile, web et ATM** : traduction des écrans de l'application bancaire (`ui_translation`), avec les chaînes ATM présentes dans les dictionnaires.
 
 Il fournit une couche linguistique pour les parcours bancaires simulés. Le middleware gère le format des réponses, les appels à la banque et `X-Trace-Id`.
 
@@ -34,11 +34,11 @@ Notez l'URL `https://...` affichée. Les URL gratuites changent à chaque redém
 
 ## Déployer sur Render
 
-Le dépôt contient un Blueprint `render.yaml`. Dans Render, créez un Blueprint depuis ce dépôt et fournissez `SAFINUM_TEAM_KEY` lorsque demandé. Render publiera le service en HTTPS; au démarrage, le serveur enregistrera automatiquement cette URL pour les canaux `ussd`, `mobile`, `web`, `sms` et `ivr`.
+Le dépôt contient un Blueprint `render.yaml`. Dans Render, créez un Blueprint depuis ce dépôt et fournissez `SAFINUM_TEAM_KEY` lorsque demandé. Render publiera le service en HTTPS; au démarrage, le serveur enregistrera automatiquement cette URL pour les canaux `ussd`, `mobile`, `web`, `sms`, `ivr` et `atm`.
 
 La clé est un secret Render : ne la mettez pas dans `render.yaml`, dans Git ou dans une capture d'écran. Après le déploiement, vérifiez `/health` et consultez les journaux Render pour confirmer que chaque canal a été enregistré. `SAFINUM_AUTO_REGISTER` peut être désactivé si vous préférez configurer les URL manuellement.
 
-Les états de conversation restent en mémoire : un redémarrage Render les efface. Gardez une seule instance pour cette version, et choisissez une instance toujours active pour éviter les délais de réveil pendant une démonstration. L'ATM n'est pas enregistré : le dépôt fournit des textes de traduction ATM, mais pas de gestionnaire de requêtes ou de transactions ATM.
+Les états de conversation restent en mémoire : un redémarrage Render les efface. Gardez une seule instance pour cette version, et choisissez une instance toujours active pour éviter les délais de réveil pendant une démonstration. L'ATM est enregistré pour la traduction de ses écrans; les parcours de transaction ATM ne sont pas gérés par ce dépôt.
 
 ## 3. Déclarer votre URL
 
@@ -48,7 +48,7 @@ curl -X POST https://safinum.cm/api/v1/sandbox/endpoint \
   -d '{"channel": "ussd", "url": "https://VOTRE-TUNNEL"}'
 ```
 
-Pour l'inscription manuelle, envoyez une requête pour chaque canal activé (`ussd`, `mobile`, `web`, `sms` et `ivr`) ; la même URL peut servir ces canaux, le kit aiguille selon le contenu de la requête.
+Pour l'inscription manuelle, envoyez une requête pour chaque canal activé (`ussd`, `mobile`, `web`, `sms`, `ivr` et `atm`) ; la même URL peut servir ces canaux, le kit aiguille selon le contenu de la requête.
 
 ## 4. Tester
 
@@ -71,7 +71,7 @@ Dans les exemples USSD, remplacez `237690000000` par un numéro de vos comptes d
 | `language.js` | Votre couche linguistique : `understand()` et `say()` | **Oui** |
 | `ussd.js` | Parcours USSD et moteur bancaire partagé avec SMS | Non |
 | `sms.js` | Adaptation SMS, contexte par numéro, estimation des segments facturés | Non |
-| `ui.js` | Traduction des écrans mobile et web | Non |
+| `ui.js` | Traduction des écrans mobile, web et ATM | Non |
 | `bank.js` | Appels à l'API bancaire (`X-Team-Key`, `X-Trace-Id`) | Non |
 | `server.js` | Serveur HTTP, aiguillage USSD / écrans | Non |
 | `translations/<langue>.json` | Traductions des écrans mobile/web et des messages USSD | **Oui** |
