@@ -3,6 +3,7 @@
 Un middleware qui **respecte déjà le contrat** de la sandbox, sur les deux sortes de canaux :
 
 - **USSD** : menu, consultation du solde, transfert de crédit (vers son numéro ou un autre), avec récapitulatif puis confirmation dans un tour séparé.
+- **SMS** : mêmes parcours que l'USSD, avec contexte conservé par numéro lorsque `session_id` est absent.
 - **Mobile et web** : traduction des écrans de l'application bancaire (`ui_translation`).
 
 Il parle français. **Votre travail : la couche linguistique.** Le reste (format des réponses, appels à la banque, `X-Trace-Id`, sessions) est déjà fait.
@@ -59,7 +60,8 @@ Dans les exemples USSD, remplacez `237690000000` par un numéro de vos comptes d
 | ------- | ---- | ------------ |
 
 | `language.js` | Votre couche linguistique : `understand()` et `say()` | **Oui** |
-| `ussd.js` | Menus USSD, solde, crédit, confirmation | Non |
+| `ussd.js` | Parcours USSD et moteur bancaire partagé avec SMS | Non |
+| `sms.js` | Adaptation SMS, contexte par numéro, estimation des segments facturés | Non |
 | `ui.js` | Traduction des écrans mobile et web | Non |
 | `bank.js` | Appels à l'API bancaire (`X-Team-Key`, `X-Trace-Id`) | Non |
 | `server.js` | Serveur HTTP, aiguillage USSD / écrans | Non |
@@ -67,7 +69,9 @@ Dans les exemples USSD, remplacez `237690000000` par un numéro de vos comptes d
 | `samples/` | Requêtes d'exemple de la passerelle | Non |
 
 - **USSD** : `understand(texte, langue)` ramène la saisie de l'utilisateur à un choix de menu ; `say(texte, langue)` traduit chaque phrase française du kit et **renvoie la langue réellement utilisée**.
+- **SMS** : réponse synchrone HTTP 200 avec le contrat habituel. Les messages sont traités comme des tours indépendants, avec l'état de parcours associé au numéro (en mémoire). La réponse est mesurée en segments GSM-7 ou UCS-2; chaque segment supplémentaire est signalé dans les journaux. Les messages ne sont pas tronqués.
 - Les traductions USSD sont stockées dans chaque dictionnaire sous les clés `ussd.*`. `language.js` associe les phrases du kit à ces clés et remplace les emplacements comme `{amount}` ; il ne contient pas les textes traduits. Les textes USSD doivent rester en GSM-7 et sous 182 caractères.
+- Les SMS utilisent les tailles standard d'un segment (160 unités GSM-7 ou 70 unités UCS-2), puis les tailles concaténées (153 ou 67). Des caractères tels que `ɛ` ou l'apostrophe courbe font passer le SMS en UCS-2.
 - **Mobile et web** : `translations/en.json` est fourni en exemple, complet. Les langues actuellement disponibles sont le français, l'anglais, le hausa, l'ewondo, le fulfulde et le kamtok (`wes`). Les textes source arrivent dans chaque requête (`strings.<clé>.text`, avec `context` et `max_chars`).
 
 ## Ce que la sandbox vérifie (et que le kit respecte déjà)

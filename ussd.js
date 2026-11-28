@@ -51,8 +51,8 @@ const MORE_MENU = [
 const MENU_TEXT = 'Safinum. Choisissez:\n1. Mon solde\n2. Transfert\n3. Frais\n4. Historique\n5. Correction\n6. Demande incomplete\n7. Solde insuffisant\n00. Voir plus';
 const MORE_MENU_TEXT = 'Suite:\n8. Langue\n9. Autre canal\n10. Terminologie financiere\n0. Retour';
 
-async function handleUssd(payload, traceId) {
-    console.log('[Safinum incoming USSD payload]', JSON.stringify(sanitizePayload(payload), null, 2));
+async function handleUssd(payload, traceId, transport = 'ussd') {
+    console.log(`[Safinum incoming ${transport.toUpperCase()} payload]`, JSON.stringify(sanitizePayload(payload), null, 2));
 
     const sessionId = payload.session_id || 'sans-session';
     const phone = String(payload.phone || '');
@@ -81,7 +81,7 @@ async function handleUssd(payload, traceId) {
     else sessions.set(sessionId, state);
     if (state.language) setLanguagePreference(phone, state.language);
 
-    return finalize(body, state.language || requestedLanguage);
+    return finalize(body, state.language || requestedLanguage, transport);
 }
 
 function applyRequestedLanguage(state, requestedLanguage) {
@@ -908,15 +908,17 @@ function reply(text, intent, parameters = {}, { options = [], end = false, trans
 }
 
 /** Applique la couche linguistique, puis vérifie les contraintes du canal. */
-function finalize(body, language) {
+function finalize(body, language, transport = 'ussd') {
     const translated = say(body.response.text, language);
 
     body.response.text = translated.text;
     body.response.options = body.response.options.map((option) => say(option, language).text);
     body.interpretation.language = translated.language;
 
-    if (!isGsm7(body.response.text)) console.warn('Hors GSM-7 (le texte sera mal affiché sur un vrai téléphone) :', body.response.text);
-    if (gsm7Length(body.response.text) > MAX_CHARS) console.warn(`Plus de ${MAX_CHARS} caractères :`, body.response.text);
+    if (transport === 'ussd') {
+        if (!isGsm7(body.response.text)) console.warn('Hors GSM-7 (le texte sera mal affiché sur un vrai téléphone) :', body.response.text);
+        if (gsm7Length(body.response.text) > MAX_CHARS) console.warn(`Plus de ${MAX_CHARS} caractères :`, body.response.text);
+    }
 
     return body;
 }
