@@ -14,6 +14,7 @@ loadEnv();
 
 const { handleUssd } = require('./ussd');
 const { handleUi } = require('./ui');
+const { handleSms } = require('./sms');
 
 const PORT = Number(process.env.PORT || 8080);
 
@@ -40,14 +41,19 @@ const server = http.createServer(async (req, res) => {
     // X-Trace-Id : à renvoyer tel quel sur CHAQUE appel bancaire de ce tour.
     // Sans lui, le jury ne peut pas relier vos appels à ce que vous déclarez.
     const traceId = req.headers['x-trace-id'] || payload.trace_id || null;
+    const isSms = String(payload.channel || payload.type || '').toLowerCase() === 'sms';
 
     try {
-        if (payload.type !== 'ui_translation') logScenarioPayload(payload);
+        if (payload.type !== 'ui_translation' && !isSms) logScenarioPayload(payload);
 
-        const reply = payload.type === 'ui_translation' ? handleUi(payload) : await handleUssd(payload, traceId);
+        const reply = payload.type === 'ui_translation'
+            ? handleUi(payload)
+            : isSms
+                ? await handleSms(payload, traceId)
+                : await handleUssd(payload, traceId);
 
         if (payload.type !== 'ui_translation') {
-            console.log('[USSD response body]', JSON.stringify(reply, null, 2));
+            console.log(`[${isSms ? 'SMS' : 'USSD'} response body]`, JSON.stringify(reply, null, 2));
         }
 
         send(res, 200, reply);
@@ -55,7 +61,8 @@ const server = http.createServer(async (req, res) => {
         // Un vrai bug : on le laisse visible (statut 500, message dans le
         // journal de la sandbox) plutôt que de le masquer.
         console.error(error);
-        send(res, 500, { error: String(error && error.message ? error.message : error) });
+        const status = error && error.statusCode === 400 ? 400 : 500;
+        send(res, status, { error: String(error && error.message ? error.message : error) });
     }
 });
 
