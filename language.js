@@ -39,8 +39,8 @@ const SOURCE_KEYS = {
     'Montant du transfert (FCFA):': 'ussd.transfer_amount_prompt',
     'Montant des frais a calculer (FCFA):': 'ussd.fee_amount_prompt',
     'Quel terme voulez-vous comprendre ? Frais, plafond ou beneficiaire.': 'ussd.term_prompt',
-    'Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde': 'ussd.language_prompt',
-    'Choisissez 1 pour francais, 2 pour hausa, 3 pour ewondo, 4 pour anglais ou 5 pour fulfulde.': 'ussd.language_invalid',
+    'Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde\n6. Kamtok': 'ussd.language_prompt',
+    'Choisissez 1 pour francais, 2 pour hausa, 3 pour ewondo, 4 pour anglais, 5 pour fulfulde ou 6 pour kamtok.': 'ussd.language_invalid',
     'Choisissez un numero de la liste.': 'ussd.choice_invalid',
     'Aucune operation recente.': 'ussd.history_empty',
     'Correction: indiquez le nouveau montant ou le beneficiaire.': 'ussd.correction_prompt',
@@ -114,6 +114,7 @@ const LANGUAGE_NAMES = {
     hau: ['hau', 'hausa', 'haoussa'],
     en: ['en', 'eng', 'english', 'anglais'],
     fub: ['fub', 'ful', 'ff', 'fulfulde', 'fula', 'pulaar'],
+    wes: ['wes', 'kamtok', 'pidgin', 'cameroonian pidgin'],
 };
 
 const TERM_ALIASES = {
@@ -257,6 +258,9 @@ function languageCode(language) {
         fula: 'fub',
         ff: 'fub',
         pulaar: 'fub',
+        kamtok: 'wes',
+        pidgin: 'wes',
+        'cameroonian pidgin': 'wes',
     };
 
     return aliases[code] || (/^[a-z]{2,3}$/.test(code) ? code : null);

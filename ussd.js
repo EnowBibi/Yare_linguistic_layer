@@ -250,7 +250,7 @@ async function handleMenu(state, text, input, phone, bank) {
     if (text === '8') {
         state.step = 'language';
 
-        return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde', 'LANGUAGE_SWITCH');
+        return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde\n6. Kamtok', 'LANGUAGE_SWITCH');
     }
     if (text === '9') return reply('Continuez sur un autre canal avec le meme numero.', 'CLARIFICATION_NEEDED');
     if (text === '10' || input.intent === 'TERM_EXPLANATION') {
@@ -287,7 +287,7 @@ function startScenario(state, selected, phone, bank) {
             return clarifyIntent();
         case '8':
             state.step = 'language';
-            return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde', 'LANGUAGE_SWITCH');
+            return reply('Choisissez une langue:\n1. Francais\n2. Hausa\n3. Ewondo\n4. English\n5. Fulfulde\n6. Kamtok', 'LANGUAGE_SWITCH');
         case '9':
             return reply('Continuez sur un autre canal avec le meme numero.', 'CLARIFICATION_NEEDED');
         case '10':
@@ -581,11 +581,11 @@ function explainTerm(term) {
 }
 
 function selectLanguage(state, text) {
-    const choices = { '1': 'fr', '2': 'hau', '3': 'ewo', '4': 'en', '5': 'fub' };
+    const choices = { '1': 'fr', '2': 'hau', '3': 'ewo', '4': 'en', '5': 'fub', '6': 'wes' };
     const language = choices[text];
 
     if (!language) {
-        return reply('Choisissez 1 pour francais, 2 pour hausa, 3 pour ewondo, 4 pour anglais ou 5 pour fulfulde.', 'CLARIFICATION_NEEDED');
+        return reply('Choisissez 1 pour francais, 2 pour hausa, 3 pour ewondo, 4 pour anglais, 5 pour fulfulde ou 6 pour kamtok.', 'CLARIFICATION_NEEDED');
     }
 
     state.language = language;
@@ -616,7 +616,7 @@ function amountValue(amount, text) {
 }
 
 function languageName(language) {
-    return { fr: 'francais', hau: 'Hausa', ewo: 'Ewondo', en: 'English', fub: 'Fulfulde' }[language] || language;
+    return { fr: 'francais', hau: 'Hausa', ewo: 'Ewondo', en: 'English', fub: 'Fulfulde', wes: 'Kamtok' }[language] || language;
 }
 
 function normalizePhone(value) {

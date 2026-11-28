@@ -68,7 +68,7 @@ Dans les exemples USSD, remplacez `237690000000` par un numéro de vos comptes d
 
 - **USSD** : `understand(texte, langue)` ramène la saisie de l'utilisateur à un choix de menu ; `say(texte, langue)` traduit chaque phrase française du kit et **renvoie la langue réellement utilisée**.
 - Les traductions USSD sont stockées dans chaque dictionnaire sous les clés `ussd.*`. `language.js` associe les phrases du kit à ces clés et remplace les emplacements comme `{amount}` ; il ne contient pas les textes traduits. Les textes USSD doivent rester en GSM-7 et sous 182 caractères.
-- **Mobile et web** : `translations/en.json` est fourni en exemple, complet. Créez `translations/dua.json`, `ewo.json`, etc. avec les mêmes clés. Les textes source arrivent dans chaque requête (`strings.<clé>.text`, avec `context` et `max_chars`).
+- **Mobile et web** : `translations/en.json` est fourni en exemple, complet. Les langues actuellement disponibles sont le français, l'anglais, le hausa, l'ewondo, le fulfulde et le kamtok (`wes`). Les textes source arrivent dans chaque requête (`strings.<clé>.text`, avec `context` et `max_chars`).
 
 ## Ce que la sandbox vérifie (et que le kit respecte déjà)
 
